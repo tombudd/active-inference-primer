@@ -1,6 +1,6 @@
 # Active Inference Primer
 
-> A minimal, annotated reference implementation of the active inference framework (Friston et al.) — written for AI researchers and engineers who want to understand the mathematics before applying it.
+> A minimal, annotated active inference primer for AI researchers and engineers who want to understand the mathematics before applying it.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,89 +8,72 @@
 
 ---
 
+## Status
+
+This repository is a minimal public primer.
+
+Implemented:
+
+- `README.md`
+- `src/free_energy.py`
+- `tests/test_free_energy.py`
+- `requirements.txt`
+- `PUBLIC_BOUNDARY.md`
+
+Roadmap:
+
+- generative model examples
+- T-maze toy example
+- notebooks
+- fuller mathematical notes
+
+The current code is intentionally small. It should be read as educational scaffolding, not as a complete active inference library.
+
+---
+
 ## Why This Exists
 
-Active inference is one of the most intellectually compelling frameworks in theoretical neuroscience and AI — and one of the hardest to actually implement from the papers alone. The notation is dense, the conceptual dependencies are non-obvious, and most code that exists is either too abstract or too tied to specific neuroimaging use cases.
+Active inference is one of the most intellectually compelling frameworks in theoretical neuroscience and AI, but the notation can be dense and difficult to translate into code.
 
-This repo is the implementation I wish had existed when I started. It is:
-- **Minimal**: only the core mathematics, no domain-specific baggage
-- **Annotated**: every equation has a plain-English explanation alongside it
-- **Correct**: validated against Friston et al. (2019) and Da Costa et al. (2020)
-- **Extensible**: designed to be the foundation for your own experiments
+This repo starts with a narrow question:
 
----
+> What is the smallest useful implementation of the free-energy pieces that a reader can inspect, run, and test?
 
-## What Is Active Inference?
-
-Active inference is a unified theory of perception, learning, and action grounded in the **free energy principle**: the claim that all self-organising systems (biological or artificial) act to minimise their variational free energy — a bound on surprise.
-
-In active inference, an agent doesn't have a reward function. It has a **generative model** — a probabilistic model of how its observations are caused — and it acts to minimise the divergence between its model and reality.
-
-This has several striking implications:
-- **Perception is inference**: the brain constructs its experience by minimising prediction error
-- **Action is inference**: actions are chosen to make predictions come true
-- **Learning is model update**: beliefs are updated to reduce free energy over time
-- **Curiosity is intrinsic**: agents prefer states that reduce uncertainty about their models
+The goal is understanding, not production deployment.
 
 ---
 
-## Repository Structure
+## What Is Included
 
-```
-active-inference-primer/
-├── notebooks/
-│   ├── 01_free_energy_basics.ipynb      # The mathematics of variational free energy
-│   ├── 02_generative_model.ipynb        # Building a generative model from scratch
-│   ├── 03_perception_as_inference.ipynb # Belief updating via gradient descent on F
-│   ├── 04_action_as_inference.ipynb     # Policy selection via expected free energy
-│   ├── 05_learning.ipynb                # Parameter learning and model update
-│   └── 06_full_agent.ipynb              # Complete active inference agent
-├── src/
-│   ├── free_energy.py     # Core F computation
-│   ├── generative.py      # Generative model classes
-│   ├── inference.py       # Belief propagation algorithms
-│   ├── agent.py           # Full agent implementation
-│   └── utils.py           # Softmax, normalisation, etc.
-├── examples/
-│   ├── t_maze.py          # Classic T-maze experiment
-│   ├── mountain_car.py    # Active inference on a control task
-│   └── epistemic_foraging.py  # Information-seeking behaviour
-├── tests/
-└── docs/
-    ├── math_reference.md  # Full mathematical reference
-    └── glossary.md        # Key terms defined precisely
-```
+`src/free_energy.py` implements:
+
+- numerically stable log
+- softmax
+- KL divergence
+- variational free energy
+- a small educational expected-free-energy approximation
+- policy posterior selection by softmax over negative expected free energy
+
+The tests check basic numerical behavior and policy selection on simple synthetic inputs.
 
 ---
 
-## The Core Mathematics
+## Scope And Limitations
 
-### Variational Free Energy
+Limited: this repository implements a small educational subset inspired by Friston et al. and Da Costa et al.; it is not a full validation of active inference.
 
-For an agent with observations `o` and hidden states `x`, the variational free energy is:
+Expected free energy has multiple formulations and decompositions in the literature. The implementation here is a toy/spec approximation for learning and testing, not a claim that this is the only correct formulation.
 
-```
-F = E_q[log q(x)] - E_q[log p(o, x)]
-  = KL[q(x) || p(x)] - E_q[log p(o|x)]
-  = Complexity - Accuracy
-```
+This repository is not:
 
-Where:
-- `q(x)` is the agent's approximate posterior belief about hidden states
-- `p(o, x)` is the generative model (joint distribution over observations and states)
-- Minimising F = maximising model evidence while minimising complexity
+- a production agent
+- a neuroscience model
+- a complete active inference framework
+- a formal proof of the free energy principle
+- a validation of any private AI system
+- an implementation of a private governance architecture
 
-### Expected Free Energy (Policy Selection)
-
-For choosing actions, the agent evaluates the **expected free energy** of each policy `π`:
-
-```
-G(π) = E_q[log q(x|π) - log p(o,x|π)]
-     ≈ -E_q[log p(o|π)] + KL[q(x|π) || p(x)]
-     = Pragmatic value + Epistemic value
-```
-
-Policies are selected by softmax over `-G(π)` — preferring policies that are both useful (pragmatic) and informative (epistemic).
+See [`PUBLIC_BOUNDARY.md`](PUBLIC_BOUNDARY.md).
 
 ---
 
@@ -98,27 +81,32 @@ Policies are selected by softmax over `-G(π)` — preferring policies that are 
 
 ```bash
 pip install -r requirements.txt
-jupyter lab notebooks/01_free_energy_basics.ipynb
+pytest
 ```
 
-Or run the T-maze example directly:
+Run a tiny policy-posterior example:
 
-```bash
-python examples/t_maze.py
+```python
+import numpy as np
+from src.free_energy import policy_posterior
+
+transition = np.array([
+    [[1.0, 0.0], [0.0, 1.0]],
+    [[1.0, 0.0], [0.0, 1.0]],
+])
+likelihood = np.eye(2)
+preferences = np.log(np.array([0.9, 0.1]))
+belief = np.array([0.5, 0.5])
+policies = [np.array([0]), np.array([1])]
+
+print(policy_posterior(policies, transition, likelihood, preferences, belief))
 ```
 
 ---
 
-## Dependencies
+## Public Boundary
 
-```
-numpy>=1.24
-scipy>=1.10
-matplotlib>=3.7
-jupyter>=1.0
-```
-
-No deep learning frameworks required — this is pure probabilistic computation.
+This repository is clean-room public education material. It uses small synthetic arrays and toy/spec examples only. It does not describe private systems, private implementation details, production logs, deployment receipts, or non-public architecture.
 
 ---
 
@@ -133,12 +121,12 @@ No deep learning frameworks required — this is pure probabilistic computation.
 
 ## Related Work
 
-This primer was developed alongside the [Eudaimonic Alignment Framework](https://github.com/tombudd/eudaimonic-alignment), which applies active inference to AI governance by treating eudaimonic flourishing as the generative model's prior.
+This primer is related to the [Eudaimonic Alignment Framework](https://github.com/tombudd/eudaimonic-alignment), which uses active inference as one conceptual bridge for public AI governance research.
 
 ---
 
 ## License
 
-MIT — use it, fork it, extend it. Attribution appreciated.
+MIT - use it, fork it, extend it. Attribution appreciated.
 
-© 2025–2026 Tom Budd / ResoVerse Technologies
+© 2025-2026 Tom Budd / ResoVerse Technologies
